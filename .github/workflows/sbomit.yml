@@ -1,0 +1,40 @@
+name: SBOMit Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: false
+
+      - name: Build under SBOMit
+        id: sbomit
+        uses: Uk-jake/sbomit-pipeline-runner@main
+        with:
+          build-command: |
+            mvn --batch-mode --no-transfer-progress -DskipTests package
+          sbom-format: spdx23
+          use-syft: true
+
+      - name: Show SBOM summary
+        env:
+          SBOM_PATH: ${{ steps.sbomit.outputs.sbom-path }}
+        run: |
+          echo "SBOM: ${SBOM_PATH}"
+          jq -r '"\(.spdxVersion), \(.packages | length) packages"' "$SBOM_PATH"
